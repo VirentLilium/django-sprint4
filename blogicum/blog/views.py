@@ -8,14 +8,17 @@ from django.utils import timezone
 from django.views.generic import (ListView, DetailView,
                                   CreateView, UpdateView, DeleteView)
 
-from .constants import POSTS_ON_THE_PAGE
-from .forms import EditProfileForm, PostForm, CommentForm
-from .mixins import OnlyAuthorRedirectMixin
-from .models import Category, Comment, Post
-from .utils import get_post_objects
+from .forms import EditProfileForm, CommentForm
+from .mixins import (AssignAuthorMixin, AssignPostMixin, CommentFormMixin,
+                     CommentTemplateMixin, ContextObjectMixin,
+                     OnlyAuthorRedirectMixin, PaginatedPostsMixin, PostPKMixin,
+                     PostTemplateMixin, PostFormMixin, PublishedPostsMixin
+                     )
+
+from .models import Category, Post
 
 
-class PostsListView(ListView):
+class PostsListView(PublishedPostsMixin, PaginatedPostsMixin, ListView):
     """
     Отображает главную страницу со списком всех постов с пагинацией.
 
@@ -28,15 +31,11 @@ class PostsListView(ListView):
         Post
     """
 
-    model = Post
-    paginate_by = POSTS_ON_THE_PAGE
     template_name = 'blog/index.html'
 
-    def get_queryset(self):
-        return get_post_objects()
 
-
-class ProfileView(ListView):
+class ProfileView(PublishedPostsMixin, PaginatedPostsMixin,
+                  ContextObjectMixin, ListView):
     """
     Страница профиля пользователя со списком его постов с пагинацией.
 
@@ -50,9 +49,8 @@ class ProfileView(ListView):
         Post
     """
 
-    model = Post
-    paginate_by = POSTS_ON_THE_PAGE
     template_name = 'blog/profile.html'
+    object_name = 'profile'
 
     def get_queryset(self):
         self.profile = get_object_or_404(
@@ -67,17 +65,13 @@ class ProfileView(ListView):
                         .annotate(comment_count=Count('comments'))
                         )
         else:
-            queryset = get_post_objects()
+            queryset = super().get_queryset()
 
         return queryset.filter(author=self.profile).order_by('-pub_date')
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['profile'] = self.profile
-        return context
 
-
-class CategoryPostsListView(ListView):
+class CategoryPostsListView(PublishedPostsMixin, PaginatedPostsMixin,
+                            ContextObjectMixin, ListView):
     """
     Страница категории, отображает все посты в категории с пагинацией.
 
@@ -91,9 +85,8 @@ class CategoryPostsListView(ListView):
         Post
     """
 
-    model = Post
-    paginate_by = POSTS_ON_THE_PAGE
     template_name = 'blog/category.html'
+    object_name = 'category'
 
     def get_queryset(self):
         self.category = get_object_or_404(
@@ -102,12 +95,7 @@ class CategoryPostsListView(ListView):
             is_published=True
         )
 
-        return get_post_objects().filter(category=self.category)
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['category'] = self.category
-        return context
+        return super().get_queryset().filter(category=self.category)
 
 
 class EditProfileView(LoginRequiredMixin, UpdateView):
@@ -128,7 +116,6 @@ class EditProfileView(LoginRequiredMixin, UpdateView):
     model = User
     form_class = EditProfileForm
     template_name = 'blog/user.html'
-    success_url = reverse_lazy('blog:index')
 
     def get_object(self, queryset=None):
         return self.request.user
@@ -139,7 +126,7 @@ class EditProfileView(LoginRequiredMixin, UpdateView):
                             )
 
 
-class PostDetailView(DetailView):
+class PostDetailView(PostPKMixin, DetailView):
     """
     Отображает страницу поста в соответствии с его идентификатором.
 
@@ -157,7 +144,6 @@ class PostDetailView(DetailView):
 
     model = Post
     template_name = 'blog/detail.html'
-    pk_url_kwarg = 'post_id'
 
     def get_object(self, queryset=None):
         queryset = (Post.objects
@@ -187,7 +173,8 @@ class PostDetailView(DetailView):
         return context
 
 
-class PostCreateView(LoginRequiredMixin, CreateView):
+class PostCreateView(LoginRequiredMixin, PostFormMixin,
+                     AssignAuthorMixin, CreateView):
     """
     Создание поста авторизованным пользователем.
 
@@ -197,14 +184,6 @@ class PostCreateView(LoginRequiredMixin, CreateView):
         Post
     """
 
-    model = Post
-    form_class = PostForm
-    template_name = 'blog/create.html'
-
-    def form_valid(self, form):
-        form.instance.author = self.request.user
-        return super().form_valid(form)
-
     def get_success_url(self):
         return reverse_lazy(
             'blog:profile',
@@ -212,7 +191,8 @@ class PostCreateView(LoginRequiredMixin, CreateView):
         )
 
 
-class PostUpdateView(LoginRequiredMixin, OnlyAuthorRedirectMixin, UpdateView):
+class PostUpdateView(LoginRequiredMixin, PostPKMixin, PostFormMixin,
+                     OnlyAuthorRedirectMixin, UpdateView):
     """
     Редактирование поста его автором.
 
@@ -221,11 +201,6 @@ class PostUpdateView(LoginRequiredMixin, OnlyAuthorRedirectMixin, UpdateView):
     Модель:
         Post
     """
-
-    model = Post
-    form_class = PostForm
-    template_name = 'blog/create.html'
-    pk_url_kwarg = 'post_id'
 
     def get_redirect_url(self):
         return reverse_lazy(
@@ -237,7 +212,8 @@ class PostUpdateView(LoginRequiredMixin, OnlyAuthorRedirectMixin, UpdateView):
         return self.get_redirect_url()
 
 
-class PostDeleteView(LoginRequiredMixin, OnlyAuthorRedirectMixin, DeleteView):
+class PostDeleteView(LoginRequiredMixin, PostPKMixin, PostTemplateMixin,
+                     OnlyAuthorRedirectMixin, DeleteView):
     """
     Удаление поста его автором.
 
@@ -246,10 +222,6 @@ class PostDeleteView(LoginRequiredMixin, OnlyAuthorRedirectMixin, DeleteView):
     Модель:
         Post
     """
-
-    model = Post
-    template_name = 'blog/create.html'
-    pk_url_kwarg = 'post_id'
 
     def get_redirect_url(self):
         return reverse_lazy(
@@ -261,7 +233,8 @@ class PostDeleteView(LoginRequiredMixin, OnlyAuthorRedirectMixin, DeleteView):
         return reverse_lazy('blog:index')
 
 
-class CommentCreateView(LoginRequiredMixin, CreateView):
+class CommentCreateView(LoginRequiredMixin, CommentFormMixin,
+                        AssignAuthorMixin, AssignPostMixin, CreateView):
     """
     Создание комментария авторизованным пользователем.
 
@@ -271,14 +244,6 @@ class CommentCreateView(LoginRequiredMixin, CreateView):
         Comment
     """
 
-    model = Comment
-    form_class = CommentForm
-
-    def form_valid(self, form):
-        form.instance.author = self.request.user
-        form.instance.post = get_object_or_404(Post, pk=self.kwargs['post_id'])
-        return super().form_valid(form)
-
     def get_success_url(self):
         return reverse_lazy(
             'blog:post_detail',
@@ -286,9 +251,9 @@ class CommentCreateView(LoginRequiredMixin, CreateView):
         )
 
 
-class CommentUpdateView(LoginRequiredMixin, OnlyAuthorRedirectMixin,
-                        UpdateView
-                        ):
+class CommentUpdateView(LoginRequiredMixin, CommentFormMixin,
+                        CommentTemplateMixin, OnlyAuthorRedirectMixin,
+                        UpdateView):
     """
     Редактирование комментария его автором.
 
@@ -297,11 +262,6 @@ class CommentUpdateView(LoginRequiredMixin, OnlyAuthorRedirectMixin,
     Модель:
         Comment
     """
-
-    model = Comment
-    form_class = CommentForm
-    template_name = 'blog/comment.html'
-    pk_url_kwarg = 'comment_id'
 
     def get_redirect_url(self):
         return reverse_lazy(
@@ -313,9 +273,8 @@ class CommentUpdateView(LoginRequiredMixin, OnlyAuthorRedirectMixin,
         return self.get_redirect_url()
 
 
-class CommentDeleteView(LoginRequiredMixin, OnlyAuthorRedirectMixin,
-                        DeleteView
-                        ):
+class CommentDeleteView(LoginRequiredMixin, CommentTemplateMixin,
+                        OnlyAuthorRedirectMixin, DeleteView):
     """
     Удаление комментария его автором.
 
@@ -324,10 +283,6 @@ class CommentDeleteView(LoginRequiredMixin, OnlyAuthorRedirectMixin,
     Модель:
         Comment
     """
-
-    model = Comment
-    template_name = 'blog/comment.html'
-    pk_url_kwarg = 'comment_id'
 
     def get_redirect_url(self):
         return reverse_lazy(
