@@ -1,25 +1,32 @@
 from django.db.models import Count
 from django.utils import timezone
 
-from .models import Post
 
-
-def get_post_objects():
+def filter_published(queryset):
     """
-    Возвращает QuerySet постов с join по заданным полям и фильтрацией.
-
-    - поля для select_related: 'author', 'location', 'category'.
-    - фильтры: дата не позднее текущего времени, пост и категория опубликованы.
-    - аннотация: comment_count (количество комментариев для каждого поста).
+    Возвращает QuerySet с фильтрацией:
+    - дата не позднее текущего времени, пост и категория опубликованы.
     """
-    query_set = (Post.objects
-                 .filter(pub_date__lte=timezone.now(),
-                         is_published=True,
-                         category__is_published=True
-                         )
-                 .select_related('author', 'location', 'category')
-                 .annotate(comment_count=Count('comments'))
-                 .order_by('-pub_date')
-                 )
+    return queryset.filter(
+        pub_date__lte=timezone.now(),
+        is_published=True,
+        category__is_published=True
+    )
 
-    return query_set
+
+def optimize_queryset(queryset):
+    """
+    Возвращает QuerySet с join по полям:
+    - 'author', 'location', 'category'.
+    """
+    return queryset.select_related('author', 'location', 'category')
+
+
+def annotate_comments(queryset):
+    """Подсчитывает количество комментариев для каждого поста."""
+    return queryset.annotate(comment_count=Count('comments'))
+
+
+def order_by_pub_date(queryset):
+    """Сортирует QuerySet по дате публикации от новых к старым."""
+    return queryset.order_by('-pub_date')

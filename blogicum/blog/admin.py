@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Category, Location, Post
+from .models import Category, Comment, Location, Post
 
 
 admin.site.empty_value_display = 'Не задано'
@@ -10,7 +10,11 @@ class PostInline(admin.TabularInline):
     """Inline-редактирование публикаций в категории."""
 
     model = Post
-    fields = ('title', 'is_published', 'pub_date', )
+    fields = (
+        'title',
+        'is_published',
+        'pub_date',
+    )
     extra = 0
 
 
@@ -25,8 +29,12 @@ class CategoryAdmin(admin.ModelAdmin):
         'title',
         'is_published',
     )
-    list_editable = ('is_published', )
-    search_fields = ('title', )
+    list_editable = (
+        'is_published',
+    )
+    search_fields = (
+        'title',
+    )
 
 
 @admin.register(Post)
@@ -50,9 +58,13 @@ class PostAdmin(admin.ModelAdmin):
         'pub_date',
     )
 
-    list_display_links = ('title', )
+    list_display_links = (
+        'title',
+    )
 
-    search_fields = ('title', )
+    search_fields = (
+        'title',
+    )
 
     list_filter = ('is_published',
                    'category',
@@ -76,7 +88,45 @@ class PostAdmin(admin.ModelAdmin):
 class LocationAdmin(admin.ModelAdmin):
     """Администрирование локаций."""
 
-    readonly_fields = ('created_at', )
-    list_display = ('name', 'is_published', 'created_at', )
-    list_editable = ('is_published', )
-    search_fields = ('name', )
+    readonly_fields = (
+        'created_at',
+    )
+    list_display = (
+        'name',
+        'is_published',
+        'created_at',
+    )
+    list_editable = (
+        'is_published',
+    )
+    search_fields = (
+        'name',
+    )
+
+
+@admin.register(Comment)
+class CommentAdmin(admin.ModelAdmin):
+    """Администрирование комментариев."""
+
+    readonly_fields = (
+        'created_at',
+    )
+    list_display = (
+        'text',
+        'post',
+        'created_at',
+        'is_published',
+        'author',
+    )
+    list_filter = (
+        'is_published',
+        'post',
+        'author',
+    )
+    list_editable = (
+        'is_published',
+    )
+    search_fields = (
+        'text',
+        'author__username',
+    )

@@ -20,9 +20,13 @@ class Category(PublishedModel):
         created_at (datetime): Дата и время добавления записи в базу.
     """
 
-    title = models.CharField(max_length=256,
-                             verbose_name='Заголовок')
-    description = models.TextField(verbose_name='Описание')
+    title = models.CharField(
+        max_length=256,
+        verbose_name='Заголовок'
+    )
+    description = models.TextField(
+        verbose_name='Описание'
+    )
     slug = models.SlugField(
         unique=True,
         verbose_name='Идентификатор',
@@ -38,6 +42,9 @@ class Category(PublishedModel):
         """Возвращает название категории."""
         return self.title
 
+    def get_absolute_url(self):
+        return reverse('blog:category_posts', args=[self.slug])
+
 
 class Location(CreatedAtModel):
     """
@@ -49,10 +56,14 @@ class Location(CreatedAtModel):
         created_at (datetime): Дата и время добавления записи в базу.
     """
 
-    name = models.CharField(max_length=256, verbose_name='Название места')
+    name = models.CharField(
+        max_length=256,
+        verbose_name='Название места'
+    )
     is_published = models.BooleanField(
         default=True,
-        verbose_name='Опубликовано')
+        verbose_name='Опубликовано'
+    )
 
     class Meta:
         verbose_name = 'местоположение'
@@ -79,10 +90,14 @@ class Post(PublishedModel):
         category (Category): Категория поста, обязательна.
     """
 
-    title = models.CharField(max_length=256,
-                             verbose_name='Заголовок')
+    title = models.CharField(
+        max_length=256,
+        verbose_name='Заголовок'
+    )
 
-    text = models.TextField(verbose_name='Текст')
+    text = models.TextField(
+        verbose_name='Текст'
+    )
 
     pub_date = models.DateTimeField(
         verbose_name='Дата и время публикации',
@@ -123,17 +138,19 @@ class Post(PublishedModel):
         verbose_name = 'публикация'
         verbose_name_plural = 'Публикации'
         default_related_name = 'posts'
-        ordering = ('-pub_date',)
+        ordering = (
+            '-pub_date',
+        )
 
     def __str__(self):
         """Возвращает заголовок публикации."""
         return self.title
 
     def get_absolute_url(self):
-        return reverse('blog:post_detail', kwargs={'post_id': self.pk})
+        return reverse('blog:post_detail', args=[self.pk])
 
 
-class Comment(models.Model):
+class Comment(PublishedModel):
     """
     Модель комментария к посту.
 
@@ -142,16 +159,31 @@ class Comment(models.Model):
         post (Post): Пост.
         created_at (datetime): Дата и время добавления комментария.
         author (User): Пользователь, написавший комментарий.
+        is_published (bool): Флаг публикации, True - опубликовано.
     """
 
-    text = models.TextField('Текст комментария')
+    text = models.TextField(
+        verbose_name='Текст комментария'
+    )
     post = models.ForeignKey(
         Post,
         on_delete=models.CASCADE,
-        related_name='comments',
+        verbose_name='Пост',
     )
-    created_at = models.DateTimeField(auto_now_add=True)
-    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        verbose_name='Автор',
+    )
 
     class Meta:
-        ordering = ('created_at',)
+        verbose_name = 'комментарий'
+        verbose_name_plural = 'Комментарии'
+        default_related_name = 'comments'
+        ordering = (
+            'created_at',
+        )
+
+    def __str__(self):
+        """Возвращает пост и автора комментария."""
+        return f'Комментарий от {self.author.username} к "{self.post}"'

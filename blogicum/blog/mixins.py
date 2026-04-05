@@ -4,7 +4,9 @@ from django.shortcuts import get_object_or_404, redirect
 from .constants import POSTS_ON_THE_PAGE
 from .forms import CommentForm, PostForm
 from .models import Comment, Post
-from .utils import get_post_objects
+from .utils import (filter_published, optimize_queryset, annotate_comments,
+                    order_by_pub_date
+                    )
 
 
 class OnlyAuthorRedirectMixin(UserPassesTestMixin):
@@ -56,7 +58,11 @@ class PublishedPostsMixin:
     """Базовый queryset с фильтрацией по опубликованным постам и категориям."""
 
     def get_queryset(self):
-        return get_post_objects()
+        queryset = Post.objects.all()
+        queryset = filter_published(queryset)
+        queryset = optimize_queryset(queryset)
+        queryset = annotate_comments(queryset)
+        return order_by_pub_date(queryset)
 
 
 class PostPKMixin:

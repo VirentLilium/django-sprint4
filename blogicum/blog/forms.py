@@ -20,7 +20,12 @@ class EditProfileForm(forms.ModelForm):
 
     class Meta:
         model = User
-        fields = ('username', 'first_name', 'last_name', 'email')
+        fields = (
+            'username',
+            'first_name',
+            'last_name',
+            'email'
+        )
         widgets = {
             'email': forms.EmailInput(),
         }
@@ -39,7 +44,10 @@ class PostForm(forms.ModelForm):
 
     class Meta:
         model = Post
-        fields = ('title', 'text', 'image', 'pub_date', 'category', 'location')
+        exclude = (
+            'author',
+            'created_at',
+        )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -62,4 +70,9 @@ class CommentForm(forms.ModelForm):
 
     class Meta:
         model = Comment
-        fields = ('text', )
+        fields = (
+            'text',
+        )
+        widgets = {
+            'text': forms.Textarea(attrs={'cols': 50, 'rows': 5}),
+        }
