@@ -22,7 +22,7 @@ class PostsListView(PublishedPostsMixin, PaginatedPostsMixin, ListView):
     """
     Отображает главную страницу со списком всех постов с пагинацией.
 
-    Использует get_post_objects для фильтрации:
+    Фильтрация:
     - дата публикации не позже текущего времени,
     - публикация опубликована,
     - категория опубликована.
@@ -156,6 +156,7 @@ class PostDetailView(PostPKMixin, DetailView):
             and post.category.is_published
         ):
             return post
+
         raise Http404("Пост не найден")
 
     def get_context_data(self, **kwargs):

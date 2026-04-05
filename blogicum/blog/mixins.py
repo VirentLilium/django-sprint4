@@ -22,7 +22,8 @@ class OnlyAuthorRedirectMixin(UserPassesTestMixin):
         return redirect(self.get_redirect_url())
 
     def get_redirect_url(self):
-        """Редирект в случае успешного выполнения.
+        """
+        Редирект в случае успешного выполнения.
 
         Должен быть переопределён во view.
         """
