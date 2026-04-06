@@ -4,8 +4,9 @@ from django.utils import timezone
 
 def filter_published(queryset):
     """
-    Возвращает QuerySet с фильтрацией:
-    - дата не позднее текущего времени, пост и категория опубликованы.
+    Возвращает QuerySet с фильтрацией.
+
+    Фильтры: дата не позднее текущего времени, пост и категория опубликованы.
     """
     return queryset.filter(
         pub_date__lte=timezone.now(),
@@ -16,8 +17,9 @@ def filter_published(queryset):
 
 def optimize_queryset(queryset):
     """
-    Возвращает QuerySet с join по полям:
-    - 'author', 'location', 'category'.
+    Возвращает QuerySet с join по полям.
+
+    Поля для select_related: 'author', 'location', 'category'.
     """
     return queryset.select_related('author', 'location', 'category')
 

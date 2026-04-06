@@ -46,7 +46,6 @@ class PostForm(forms.ModelForm):
         model = Post
         exclude = (
             'author',
-            'created_at',
         )
 
     def __init__(self, *args, **kwargs):
