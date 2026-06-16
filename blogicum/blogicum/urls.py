@@ -1,3 +1,5 @@
+"""Маршруты проекта Blogicum."""
+
 from django.contrib import admin
 from django.contrib.auth.forms import UserCreationForm
 from django.urls import include, path, reverse_lazy

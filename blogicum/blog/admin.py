@@ -1,13 +1,20 @@
+"""Настройки админ-зоны приложения blog."""
+
 from django.contrib import admin
 
-from .models import Category, Comment, Location, Post
+from blog.models import Category, Comment, Location, Post
 
 
 admin.site.empty_value_display = 'Не задано'
 
 
 class PostInline(admin.TabularInline):
-    """Inline-редактирование публикаций в категории."""
+    """
+    Inline-редактирование публикаций в категории.
+
+    Позволяет создавать и редактировать публикации
+    непосредственно на странице категории.
+    """
 
     model = Post
     fields = (
@@ -20,7 +27,7 @@ class PostInline(admin.TabularInline):
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
-    """Администрирование категорий."""
+    """Настройки отображения и редактирования категорий в админ-панели."""
 
     inlines = [
         PostInline,
@@ -39,7 +46,7 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Post)
 class PostAdmin(admin.ModelAdmin):
-    """Администрирование публикаций блога."""
+    """Настройки отображения и редактирования публикаций в админ-панели."""
 
     list_display = (
         'title',
@@ -86,7 +93,7 @@ class PostAdmin(admin.ModelAdmin):
 
 @admin.register(Location)
 class LocationAdmin(admin.ModelAdmin):
-    """Администрирование локаций."""
+    """Настройки отображения и редактирования локаций в админ-панели."""
 
     readonly_fields = (
         'created_at',
@@ -106,7 +113,7 @@ class LocationAdmin(admin.ModelAdmin):
 
 @admin.register(Comment)
 class CommentAdmin(admin.ModelAdmin):
-    """Администрирование комментариев."""
+    """Настройки отображения и редактирования комментариев в админ-панели."""
 
     readonly_fields = (
         'created_at',

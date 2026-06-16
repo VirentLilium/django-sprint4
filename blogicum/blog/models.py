@@ -1,3 +1,5 @@
+"""Модели приложения blog."""
+
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.urls import reverse
@@ -9,100 +11,86 @@ User = get_user_model()
 
 
 class Category(PublishedModel):
-    """
-    Модель категории.
-
-    Атрибуты:
-        title (str): Заголовок категории.
-        description (str): Описание категории.
-        slug (slug): Слаг категории.
-        is_published (bool): Флаг категории, True - опубликовано.
-        created_at (datetime): Дата и время добавления записи в базу.
-    """
+    """Модель категории публикаций."""
 
     title = models.CharField(
         max_length=256,
-        verbose_name='Заголовок'
+        verbose_name='Заголовок',
     )
     description = models.TextField(
-        verbose_name='Описание'
+        verbose_name='Описание',
     )
     slug = models.SlugField(
         unique=True,
         verbose_name='Идентификатор',
         help_text=('Идентификатор страницы для URL; '
-                   'разрешены символы латиницы, цифры, дефис и подчёркивание.')
+                   'разрешены символы латиницы, цифры, дефис и подчёркивание.'
+                   ),
     )
 
     class Meta:
         verbose_name = 'категория'
         verbose_name_plural = 'Категории'
 
-    def __str__(self):
-        """Возвращает название категории."""
+    def __str__(self) -> str:
+        """
+        Возвращает название категории.
+
+        :return: Название категории.
+        """
         return self.title
 
-    def get_absolute_url(self):
+    def get_absolute_url(self) -> str:
+        """
+        Возвращает URL страницы категории.
+
+        :return: URL страницы категории.
+        """
         return reverse('blog:category_posts', args=[self.slug])
 
 
 class Location(CreatedAtModel):
-    """
-    Модель локации.
-
-    Атрибуты:
-        name (str): Название локации.
-        is_published (bool): Флаг локации, True - опубликовано.
-        created_at (datetime): Дата и время добавления записи в базу.
-    """
+    """Модель местоположения публикации."""
 
     name = models.CharField(
         max_length=256,
-        verbose_name='Название места'
+        verbose_name='Название места',
     )
     is_published = models.BooleanField(
         default=True,
-        verbose_name='Опубликовано'
+        verbose_name='Опубликовано',
     )
 
     class Meta:
         verbose_name = 'местоположение'
         verbose_name_plural = 'Местоположения'
 
-    def __str__(self):
-        """Возвращает название локации."""
+    def __str__(self) -> str:
+        """
+        Возвращает название местоположения.
+
+        :return: Название местоположения.
+        """
         return self.name
 
 
 class Post(PublishedModel):
-    """
-    Модель публикации (пост) для блога.
-
-    Атрибуты:
-        title (str): Заголовок поста.
-        text (str): Основной текст публикации.
-        pub_date (datetime): Дата и время публикации.
-        image (ImageField | None): Опциональное изображение поста.
-        created_at (datetime): Дата и время добавления записи в базу.
-        is_published (bool): Флаг публикации, True - опубликовано.
-        author (User): Пользователь, создавший пост.
-        location (Location | None): Местоположение, может быть пустым.
-        category (Category): Категория поста, обязательна.
-    """
+    """Модель публикации блога."""
 
     title = models.CharField(
         max_length=256,
-        verbose_name='Заголовок'
+        verbose_name='Заголовок',
     )
 
     text = models.TextField(
-        verbose_name='Текст'
+        verbose_name='Текст',
     )
 
     pub_date = models.DateTimeField(
         verbose_name='Дата и время публикации',
         help_text=('Если установить дату и время в будущем — '
-                   'можно делать отложенные публикации.')
+                   'можно делать отложенные публикации.'
+                   ),
 
     )
 
@@ -142,28 +130,28 @@ class Post(PublishedModel):
             '-pub_date',
         )
 
-    def __str__(self):
-        """Возвращает заголовок публикации."""
+    def __str__(self) -> str:
+        """
+        Возвращает заголовок публикации.
+
+        :return: Заголовок публикации.
+        """
         return self.title
 
-    def get_absolute_url(self):
+    def get_absolute_url(self) -> str:
+        """
+        Возвращает URL страницы публикации.
+
+        :return: URL страницы публикации.
+        """
         return reverse('blog:post_detail', args=[self.pk])
 
 
 class Comment(PublishedModel):
-    """
-    Модель комментария к посту.
-
-    Атрибуты:
-        text (str): Текст комментария.
-        post (Post): Пост.
-        created_at (datetime): Дата и время добавления комментария.
-        author (User): Пользователь, написавший комментарий.
-        is_published (bool): Флаг публикации, True - опубликовано.
-    """
+    """Модель комментария к публикации."""
 
     text = models.TextField(
-        verbose_name='Текст комментария'
+        verbose_name='Текст комментария',
     )
     post = models.ForeignKey(
         Post,
@@ -184,6 +172,10 @@ class Comment(PublishedModel):
             'created_at',
         )
 
-    def __str__(self):
-        """Возвращает пост и автора комментария."""
+    def __str__(self) -> str:
+        """
+        Возвращает строковое представление комментария.
+
+        :return: Информация об авторе и публикации комментария.
+        """
         return f'Комментарий от {self.author.username} к "{self.post}"'

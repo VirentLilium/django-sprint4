@@ -1,60 +1,69 @@
+"""Представления приложения blog."""
+
+from typing import Any
+
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import User
+from django.db.models import QuerySet
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
-from django.views.generic import (CreateView, DeleteView, DetailView,
-                                  ListView, UpdateView,
-                                  )
+from django.views.generic import (
+    CreateView,
+    DeleteView,
+    DetailView,
+    ListView,
+    UpdateView,
+)
 
-from .forms import CommentForm, EditProfileForm, PostForm
-from .mixins import (AssignAuthorMixin, AssignPostMixin, CommentFormMixin,
-                     CommentTemplateMixin, ContextObjectMixin,
-                     OnlyAuthorRedirectMixin, PaginatedPostsMixin, PostPKMixin,
-                     PostTemplateMixin, PostFormMixin, PublishedPostsMixin
-                     )
-from .models import Category, Post
-from .utils import annotate_comments, optimize_queryset
+from blog.forms import CommentForm, EditProfileForm, PostForm
+from blog.mixins import (
+    AssignAuthorMixin,
+    AssignPostMixin,
+    CommentFormMixin,
+    CommentTemplateMixin,
+    ContextObjectMixin,
+    OnlyAuthorRedirectMixin,
+    PaginatedPostsMixin,
+    PostFormMixin,
+    PostPKMixin,
+    PostTemplateMixin,
+    PublishedPostsMixin,
+)
+from blog.models import Category, Post
+from blog.utils import annotate_comments, optimize_queryset
 
 
 class PostsListView(PublishedPostsMixin, PaginatedPostsMixin, ListView):
-    """
-    Отображает главную страницу со списком всех постов с пагинацией.
-
-    Фильтрация:
-    - дата публикации не позже текущего времени,
-    - публикация опубликована,
-    - категория опубликована.
-
-    Модель:
-        Post
-    """
+    """Отображает главную страницу со списком публикаций."""
 
     template_name = 'blog/index.html'
 
 
-class ProfileView(PublishedPostsMixin, PaginatedPostsMixin,
-                  ContextObjectMixin, ListView):
-    """
-    Страница профиля пользователя со списком его постов с пагинацией.
-
-    Особенности:
-    - Для автора отображаются все посты.
-    - Для остальных пользователей отображаются только опубликованные посты
-    с опубликованной категорией.
-
-    Модель:
-        Post
-    """
+class ProfileView(
+    PublishedPostsMixin,
+    PaginatedPostsMixin,
+    ContextObjectMixin,
+    ListView
+):
+    """Отображает профиль пользователя со списком его публикаций."""
 
     template_name = 'blog/profile.html'
     object_name = 'profile'
 
-    def get_queryset(self):
+    def get_queryset(self) -> QuerySet[Post]:
+        """
+        Возвращает публикации пользователя для страницы профиля.
+
+        Для владельца профиля возвращает все публикации.
+        Для остальных пользователей возвращает опубликованные публикации.
+
+        :return: QuerySet публикаций пользователя.
+        """
         self.profile = get_object_or_404(
             User,
-            username=self.kwargs['username']
+            username=self.kwargs['username'],
         )
 
         if self.request.user == self.profile:
@@ -67,82 +76,78 @@ class ProfileView(PublishedPostsMixin, PaginatedPostsMixin,
         return queryset.filter(author=self.profile).order_by('-pub_date')
 
 
-class CategoryPostsListView(PublishedPostsMixin, PaginatedPostsMixin,
-                            ContextObjectMixin, ListView):
-    """
-    Страница категории, отображает все посты в категории с пагинацией.
-
-    Фильтры:
-    - дата публикации не позже текущего времени,
-    - публикация опубликована,
-    - категория опубликована.
-    - категория определяется по слагу из URL.
-
-    Модель:
-        Post
-    """
+class CategoryPostsListView(
+    PublishedPostsMixin,
+    PaginatedPostsMixin,
+    ContextObjectMixin,
+    ListView,
+):
+    """Отображает страницу категории со списком публикаций."""
 
     template_name = 'blog/category.html'
     object_name = 'category'
 
-    def get_queryset(self):
+    def get_queryset(self) -> QuerySet[Post]:
+        """
+        Возвращает опубликованные публикации выбранной категории.
+
+        :return: QuerySet публикаций категории.
+        """
         self.category = get_object_or_404(
             Category,
             slug=self.kwargs['category_slug'],
-            is_published=True
+            is_published=True,
         )
 
         return super().get_queryset().filter(category=self.category)
 
 
 class EditProfileView(LoginRequiredMixin, UpdateView):
-    """
-    Редактирование профиля пользователя.
-
-    Особенности:
-    - Только текущий пользователь может редактировать свой профиль.
-    - После сохранения редирект на профиль пользователя.
-
-    Модель:
-        User
-
-    Форма:
-        EditProfileForm
-    """
+    """Отображает страницу редактирования профиля пользователя."""
 
     model = User
     form_class = EditProfileForm
     template_name = 'blog/user.html'
 
-    def get_object(self, queryset=None):
+    def get_object(self, queryset: QuerySet | None = None) -> User:
+        """
+        Возвращает текущего пользователя для редактирования.
+
+        :param queryset: QuerySet пользователей.
+        :return: Текущий пользователь.
+        """
         return self.request.user
 
-    def get_success_url(self):
-        return reverse('blog:profile',
-                       kwargs={'username': self.request.user.username}
-                       )
+    def get_success_url(self) -> str:
+        """
+        Возвращает URL профиля после успешного редактирования.
+
+        :return: URL профиля текущего пользователя.
+        """
+        return reverse(
+            'blog:profile',
+            kwargs={'username': self.request.user.username},
+        )
 
 
 class PostDetailView(PostPKMixin, DetailView):
-    """
-    Отображает страницу поста в соответствии с его идентификатором.
-
-    Автор поста может видеть его всегда.
-    Остальные пользователи только если:
-    - дата публикации не позже текущего времени,
-    - пост опубликован,
-    - категория опубликована.
-
-    Иначе возвращается ошибка 404.
-
-    Модель:
-        Post
-    """
+    """Отображает страницу поста в соответствии с его идентификатором."""
 
     model = Post
     template_name = 'blog/detail.html'
 
-    def get_object(self, queryset=None):
+    def get_object(self, queryset: QuerySet | None = None) -> Post:
+        """
+        Возвращает публикацию для детального просмотра.
+
+        Автор может видеть публикацию всегда.
+        Остальные пользователи видят только опубликованную публикацию
+        с опубликованной категорией и датой публикации не позднее текущей.
+
+        :param queryset: QuerySet публикаций.
+        :return: Объект публикации.
+        :raises Http404: Если публикация недоступна пользователю.
+        """
         queryset = (Post.objects.filter(category__isnull=False))
         queryset = optimize_queryset(queryset)
 
@@ -156,128 +161,173 @@ class PostDetailView(PostPKMixin, DetailView):
         ):
             return post
 
-        raise Http404("Пост не найден")
+        raise Http404('Пост не найден')
 
-    def get_context_data(self, **kwargs):
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        """
+        Добавляет форму комментария и комментарии публикации в контекст.
+
+        :param kwargs: Дополнительные данные контекста.
+        :return: Контекст страницы публикации.
+        """
         context = super().get_context_data(**kwargs)
+
         if self.request.user.is_authenticated:
             context['form'] = CommentForm()
-        context['comments'] = (self.object.comments
-                               .filter(is_published=True)
-                               .select_related('author')
-                               )
+
+        context['comments'] = (
+            self.object.comments
+            .filter(is_published=True)
+            .select_related('author')
+        )
         return context
 
 
-class PostCreateView(LoginRequiredMixin, PostFormMixin,
-                     AssignAuthorMixin, CreateView):
-    """
-    Создание поста авторизованным пользователем.
+class PostCreateView(
+    LoginRequiredMixin,
+    PostFormMixin,
+    AssignAuthorMixin,
+    CreateView,
+):
+    """Отображает страницу создания публикации."""
 
-    После создание поста редирект на страницу пользователя.
+    def get_success_url(self) -> str:
+        """
+        Возвращает URL профиля после создания публикации.
 
-    Модель:
-        Post
-    """
-
-    def get_success_url(self):
-        return reverse('blog:profile',
-                       kwargs={'username': self.request.user.username}
-                       )
-
-
-class PostUpdateView(LoginRequiredMixin, PostPKMixin, PostFormMixin,
-                     OnlyAuthorRedirectMixin, UpdateView):
-    """
-    Редактирование поста его автором.
-
-    Если не автор пытается редактировать пост, редирект на страницу поста.
-
-    Модель:
-        Post
-    """
-
-    def get_redirect_url(self):
-        return reverse('blog:post_detail',
-                       kwargs={'post_id': self.kwargs['post_id']}
-                       )
+        :return: URL профиля текущего пользователя.
+        """
+        return reverse(
+            'blog:profile',
+            kwargs={'username': self.request.user.username},
+        )
 
 
-class PostDeleteView(LoginRequiredMixin, PostPKMixin, PostTemplateMixin,
-                     OnlyAuthorRedirectMixin, DeleteView):
-    """
-    Удаление поста его автором.
+class PostUpdateView(
+    LoginRequiredMixin,
+    PostPKMixin,
+    PostFormMixin,
+    OnlyAuthorRedirectMixin,
+    UpdateView,
+):
+    """Отображает страницу редактирования публикации."""
 
-    Если не автор пытается удалить пост, редирект на главную страницу.
+    def get_redirect_url(self) -> str:
+        """
+        Возвращает URL для редиректа пользователя без прав.
 
-    Модель:
-        Post
-    """
+        :return: URL страницы публикации.
+        """
+        return reverse(
+            'blog:post_detail',
+            kwargs={'post_id': self.kwargs['post_id']},
+        )
+
+
+class PostDeleteView(
+    LoginRequiredMixin,
+    PostPKMixin,
+    PostTemplateMixin,
+    OnlyAuthorRedirectMixin,
+    DeleteView,
+):
+    """Отображает страницу удаления публикации."""
 
     success_url = reverse_lazy('blog:index')
 
-    def get_redirect_url(self):
-        return reverse('blog:post_detail',
-                       kwargs={'post_id': self.kwargs['post_id']}
-                       )
+    def get_redirect_url(self) -> str:
+        """
+        Возвращает URL для редиректа пользователя без прав.
 
-    def get_context_data(self, **kwargs):
+        :return: URL страницы публикации.
+        """
+        return reverse(
+            'blog:post_detail',
+            kwargs={'post_id': self.kwargs['post_id']},
+        )
+
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        """
+        Добавляет форму публикации в контекст страницы удаления.
+
+        :param kwargs: Дополнительные данные контекста.
+        :return: Контекст страницы удаления публикации.
+        """
         context = super().get_context_data(**kwargs)
         context['form'] = PostForm(instance=self.object)
         return context
 
 
-class CommentCreateView(LoginRequiredMixin, CommentFormMixin,
-                        AssignAuthorMixin, AssignPostMixin, CreateView):
-    """
-    Создание комментария авторизованным пользователем.
+class CommentCreateView(
+    LoginRequiredMixin,
+    CommentFormMixin,
+    AssignAuthorMixin,
+    AssignPostMixin,
+    CreateView,
+):
+    """Отображает форму создания комментария."""
 
-    После создания комментария - редирект на страницу поста.
+    def get_success_url(self) -> str:
+        """
+        Возвращает URL публикации после создания комментария.
 
-    Модель:
-        Comment
-    """
-
-    def get_success_url(self):
+        :return: URL страницы публикации.
+        """
         return self.object.post.get_absolute_url()
 
 
-class CommentUpdateView(LoginRequiredMixin, CommentFormMixin,
-                        CommentTemplateMixin, OnlyAuthorRedirectMixin,
-                        UpdateView):
-    """
-    Редактирование комментария его автором.
+class CommentUpdateView(
+    LoginRequiredMixin,
+    CommentFormMixin,
+    CommentTemplateMixin,
+    OnlyAuthorRedirectMixin,
+    UpdateView,
+):
+    """Отображает страницу редактирования комментария."""
 
-    После редактирования комментария - редирект на страницу поста.
+    def get_redirect_url(self) -> str:
+        """
+        Возвращает URL для редиректа пользователя без прав.
 
-    Модель:
-        Comment
-    """
+        :return: URL страницы публикации.
+        """
+        return reverse(
+            'blog:post_detail',
+            kwargs={'post_id': self.kwargs['post_id']},
+        )
 
-    def get_redirect_url(self):
-        return reverse('blog:post_detail',
-                       kwargs={'post_id': self.kwargs['post_id']}
-                       )
+    def get_success_url(self) -> str:
+        """
+        Возвращает URL публикации после редактирования комментария.
 
-    def get_success_url(self):
+        :return: URL страницы публикации.
+        """
         return self.get_redirect_url()
 
 
-class CommentDeleteView(LoginRequiredMixin, CommentTemplateMixin,
-                        OnlyAuthorRedirectMixin, DeleteView):
-    """
-    Удаление комментария его автором.
+class CommentDeleteView(
+    LoginRequiredMixin,
+    CommentTemplateMixin,
+    OnlyAuthorRedirectMixin,
+    DeleteView,
+):
+    """Отображает страницу удаления комментария."""
 
-    После удаления комментария - редирект на страницу поста.
+    def get_redirect_url(self) -> str:
+        """
+        Возвращает URL для редиректа пользователя без прав.
 
-    Модель:
-        Comment
-    """
+        :return: URL страницы публикации.
+        """
+        return reverse(
+            'blog:post_detail',
+            kwargs={'post_id': self.kwargs['post_id']},
+        )
 
-    def get_redirect_url(self):
-        return reverse('blog:post_detail',
-                       kwargs={'post_id': self.kwargs['post_id']}
-                       )
+    def get_success_url(self) -> str:
+        """
+        Возвращает URL публикации после удаления комментария.
 
-    def get_success_url(self):
+        :return: URL страницы публикации.
+        """
         return self.get_redirect_url()
